@@ -30,7 +30,7 @@ static struct {
 	char *VehicleFile;   /* Buffer for Vehicle file Name    */
 } RSDScfg;
 
-struct {
+static struct {
     int         nFrames;
     int         nBytes;
 } RSDSIF;
