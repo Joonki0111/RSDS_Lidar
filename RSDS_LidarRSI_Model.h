@@ -12,6 +12,9 @@
 #include <Car/Car.h>
 #include <Vehicle/Sensor_LidarRSI.h>
 #include "rsds-client.h"
+#include <stdbool.h> //HJK_250116
+#include <limits.h> //HJK_250116
+#include <unistd.h> //HJK_250116
 
 #define LIDAR_MAX_SCANPOINT_SIZE 270000
 
@@ -50,6 +53,8 @@
 #define VLS_128_NUMBER_OF_PACKET 600
 #define VLS_128_Distance_Res 4
 #define VLS_128_Angle_Res 20 // 0.2 deg
+
+#define OS1_128_NUMBER_OF_POINTS 131072 //HJK_250116
 
 #pragma pack(push, 1)
 typedef struct Data_point {  
@@ -126,6 +131,34 @@ typedef struct LidarRSI_ScanData {
     tData_point Data_points[LIDAR_MAX_SCANPOINT_SIZE];
 }tLidarRSI_ScanData;
 
+//HJK_250116 {
+typedef struct OS1_data_block 
+{
+    unsigned int range;
+    unsigned short reflectivity;
+    unsigned short signal;
+    unsigned short nir;
+    unsigned short reserved;
+}tOS1_data_block;
+
+#pragma pack(push, 1)
+typedef struct OS1_column
+{
+    unsigned long long timestamp;
+    unsigned short measurement_id;
+    unsigned short frame_id;
+    unsigned int encoder_count;
+    tOS1_data_block data_block[128];
+    unsigned int block_status;
+}tOS1_column;
+#pragma pack(pop)
+
+typedef struct OS1_packet 
+{
+	tOS1_column column[16];
+}tOS1_packet;
+//HJK_250116 }
+
 typedef struct LidarRSI_Param {
     tInfos *Inf_Sensor;
     char SensorBeamFile[255];
@@ -160,14 +193,21 @@ typedef struct LidarRSI_SensorUnit {
     int socketOut_Lidar;
 	int Num_Scan;
 	unsigned short ID_Frame;
-	
+
+	//HJK_250116 {
+	unsigned short os1_frame_count;
+	unsigned short os1_measurement_id_count;
+	unsigned int os1_encoder_count;
+	unsigned int os1_point_count;
+	//HJK_250116 }
+
     tLidarRSI_Param SensorParam;
 	tLidarRSI_ScanData Lidar_ScanData;
 	tLidarRSI_SendData Lidar_SendData[VLP_16_NUMBER_OF_PACKET];
 	tLidarRSI_SendData_32 Lidar_SendData_32[VLP_32_NUMBER_OF_PACKET];
 	tLidarRSI_SendData_64 Lidar_SendData_64[VLP_64_NUMBER_OF_PACKET];
 	tLidarRSI_SendData_128 Lidar_SendData_128[VLS_128_NUMBER_OF_PACKET];
-	
+	tOS1_packet os1_packet[64]; //HJK_250116
 	tLidarRSI *CM_LidarSens;
 	tLidarRSI *ptr;
 }tLidarRSI_SensorUnit;

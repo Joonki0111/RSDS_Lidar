@@ -45,6 +45,7 @@ void RSDS_LidarRSI_ReadSpec_SensorInfoFile(char* SensorBeamFile, int idx_current
 	else if (strcmp(SensorKind, "VLP-32-360deg_50ms") == 0)		Pf_LidarSens->SensorParam.nTotal = VLP_32_POINTS_OF_SCAN * 5;
 	else if (strcmp(SensorKind, "VLP-64") == 0)					Pf_LidarSens->SensorParam.nTotal = VLP_64_NUMBER_OF_POINTS;
 	else if (strcmp(SensorKind, "VLS-128") == 0)				Pf_LidarSens->SensorParam.nTotal = VLS_128_NUMBER_OF_POINTS;
+	else if (strcmp(SensorKind, "OS1-128") == 0)				Pf_LidarSens->SensorParam.nTotal = OS1_128_NUMBER_OF_POINTS; //HJK_250116
 	else 														Pf_LidarSens->SensorParam.nTotal = 0;
 	
 	// Read h/v resolution of sensors
@@ -198,10 +199,10 @@ int RSDS_LidarRSI_ReadSpec_VehicleInfoFile(char* VehicleFileName, int MoviePort)
 		Log("\nLidar module:\n");
 		Log("Amount of LidarRSI sensors: %d\n", lidarConfig.nSensors);
     }
-
+	
 	// Initialization of sensor configuration
     lidarConfig.LidarSensor = malloc(lidarConfig.nSensors * sizeof(tLidarRSI_SensorUnit));
-
+	
 	for (i=0; i < lidarConfig.nSensors; i++)
     {
 		// Prefix
@@ -344,6 +345,21 @@ int RSDS_LidarRSI_Valid(void)
 				Log("Check the VLS-128 Sensor Beam file\n");
 			}
 		}
+		//HJK_250116 {
+		else if(strcmp(Pf_LidarSens->SensorKind, "OS1-128") == 0)
+		{
+
+			if(Pf_LidarSens->SensorParam.nTotal == OS1_128_NUMBER_OF_POINTS)
+			{
+				Pf_LidarSens->SensorValid = 1;
+			}
+			else 
+			{
+				Pf_LidarSens->SensorValid = 0;
+				Log("Check the OS-128 Sensor Beam file\n");
+			}
+		}
+		//HJK_250116 }
 		else {
 			Pf_LidarSens->SensorValid = 0;
 			Log("Check the Sensor %d kind\n",i);
@@ -547,6 +563,25 @@ int RSDS_LidarRSI_WriteSensorData(tLidarRSI_SensorUnit *sens, tRSIResMsg_Lidar *
 
 	}
 
+	//HJK_250116 {
+	else if(strcmp(sens->SensorKind, "OS1-128") == 0)
+	{	
+		for(i = 0; i < OS1_128_NUMBER_OF_POINTS; i++){
+			sens->Lidar_ScanData.Data_points[i].Range = 0;
+			sens->Lidar_ScanData.Data_points[i].Ref = 0;
+		}
+		for(i = 0; i < RSIResMsg_Lidar->Header.nScanPoints; i++){
+			temp =  RSIResMsg_Lidar->SP[i].LengthOF * 1000 / 2 / VLS_128_Distance_Res; // [mm] - VLS_128_Distance_Res: 4
+			if(temp > 60000) temp = 60000;
+			sens->Lidar_ScanData.Data_points[RSIResMsg_Lidar->SP[i].BeamID].Range = (unsigned short) temp;
+
+			temp_c = LidarRSI_IntensityCalc_VLP(sens,  RSIResMsg_Lidar->SP[i].Intensity,  RSIResMsg_Lidar->SP[i].LengthOF);
+			sens->Lidar_ScanData.Data_points[RSIResMsg_Lidar->SP[i].BeamID].Ref = temp_c;
+			
+		}
+	
+	}
+	//HJK_250116 }
 	return 0;
 }
 
@@ -706,7 +741,7 @@ void RSDS_LidarRSI_Send_UDP_DataPackets(tLidarRSI_SensorUnit *sens)
 		}
 
 		for(i = 0; i < VLP_64_NUMBER_OF_PACKET; i++){
-
+			
 			UDP_SendMsg(sens->socketOut_Lidar, &sens->Lidar_SendData_64[i], sizeof(tLidarRSI_SendData_64));
 		}
 		
@@ -758,6 +793,57 @@ void RSDS_LidarRSI_Send_UDP_DataPackets(tLidarRSI_SensorUnit *sens)
 		}
 		
 	}
+	//HJK_250116 {
+	else if(strcmp(sens->SensorKind, "OS1-128") == 0)
+	{
+		for(int i = 0; i < 64; i++) //send packet 64 times
+		{
+			for(int j = 0; j < 16; j++) //this is one packet
+			{
+				struct timeval time_now;
+				gettimeofday(&time_now, NULL);
+				long long UDP_time = (time_now.tv_sec * 1000LL + time_now.tv_usec / 1000);
+
+				sens->os1_packet[i].column[j].timestamp = UDP_time;
+				sens->os1_packet[i].column[j].measurement_id = sens->os1_measurement_id_count;
+				sens->os1_packet[i].column[j].frame_id = sens->os1_frame_count; //TODO
+				sens->os1_packet[i].column[j].encoder_count = sens->os1_encoder_count;
+				for(int k = 0; k < 128; k++) //this is one column
+				{
+					sens->os1_packet[i].column[j].data_block[k].range = sens->Lidar_ScanData.Data_points[sens->os1_point_count].Range;
+					sens->os1_packet[i].column[j].data_block[k].reflectivity = sens->Lidar_ScanData.Data_points[sens->os1_point_count].Ref;
+					sens->os1_packet[i].column[j].data_block[k].signal = 0;
+					sens->os1_packet[i].column[j].data_block[k].nir = 0;
+					sens->os1_packet[i].column[j].data_block[k].reserved = 0;
+					sens->os1_point_count++;
+					if(sens->os1_point_count == OS1_128_NUMBER_OF_POINTS)
+					{
+						sens->os1_point_count = 0;
+					}
+				}
+				sens->os1_packet[i].column[j].block_status =0xffffffff;
+
+				sens->os1_measurement_id_count++;
+				sens->os1_encoder_count += 88; //1024 = 88
+				if(sens->os1_measurement_id_count == 1024)
+				{
+					sens->os1_measurement_id_count = 0;
+				}
+				if(sens->os1_encoder_count >= 90111)
+				{
+					sens->os1_encoder_count = 0;
+				}
+			}
+			UDP_SendMsg(sens->socketOut_Lidar, &sens->os1_packet[i], sizeof(tOS1_packet));
+		}
+
+		if(sens->os1_frame_count == USHRT_MAX)
+		{
+			sens->os1_frame_count = 0;
+		};
+		sens->os1_frame_count++;
+	}
+	//HJK_250116 }
 
 	return;
 }
@@ -778,11 +864,10 @@ int RSDS_LidarRSI_Config_Out(tRSIResMsg_Lidar *RSIResMsg_Lidar)
 	{
 		// Sensor valid check
 		if(lidarConfig.LidarSensor[i].SensorValid == 0)	continue;
-
+		
 		// Sensor data update
 		RSDS_LidarRSI_WriteSensorData(&lidarConfig.LidarSensor[i], RSIResMsg_Lidar);
-
-	
+		
 		if(strcmp(lidarConfig.LidarSensor[i].SensorKind, "VLP-16-360deg_50ms") == 0)
 		{	
 			// Sensor data send
@@ -796,7 +881,6 @@ int RSDS_LidarRSI_Config_Out(tRSIResMsg_Lidar *RSIResMsg_Lidar)
 		else if(strcmp(lidarConfig.LidarSensor[i].SensorKind, "VLP-32-360deg_50ms") == 0)
 		{	
 			// Sensor data send
-
 			RSDS_LidarRSI_Send_UDP_DataPackets(&lidarConfig.LidarSensor[i]);
 		}
 		else if(strcmp(lidarConfig.LidarSensor[i].SensorKind, "VLP-64") == 0)
@@ -809,7 +893,13 @@ int RSDS_LidarRSI_Config_Out(tRSIResMsg_Lidar *RSIResMsg_Lidar)
 			// Sensor data send
 			RSDS_LidarRSI_Send_UDP_DataPackets(&lidarConfig.LidarSensor[i]);
 		}
-		
+		//HJK_250116 {
+		else if(strcmp(lidarConfig.LidarSensor[i].SensorKind, "OS1-128") == 0)
+		{	
+			// Sensor data send
+			RSDS_LidarRSI_Send_UDP_DataPackets(&lidarConfig.LidarSensor[i]);
+		}
+		//HJK_250116 }
 	}
 	
 	return 0;
