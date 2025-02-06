@@ -13,7 +13,7 @@ DEF_CFLAGS += -DLINUX -D_GNU_SOURCE
 
 CFLAGS += $(DEF_CFLAGS)
 
-include /opt/ipg/carmaker/linux64-11.0/include/MakeDefs.linux64 #HJK /opt/ipg/carmaker/linux64-11.1/include/MakeDefs.linux64
+include /opt/ipg/carmaker/linux64-11.1/include/MakeDefs.linux64 #HJK_250206
 LD_LIBS =		$(CAR_LIB) \
 			$(CARMAKER_LIB) $(DRIVER_LIB) $(ROAD_LIB) $(TIRE_LIB)
 
