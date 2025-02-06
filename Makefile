@@ -27,5 +27,5 @@ endif
 rsds-client$(EXT):	$(OBJS)
 	$(CC) -o $@ $(CFLAGS) $(OBJS) $(LD_LIBS) $(LD_LIBS_OS) $(LIBS)
 
-clean:
-	rm -f *.o rsds-client
+clean: #HJK_250206
+	rm -f rsds-client this rsds-client.o RSDS_LidarRSI_Model.o
