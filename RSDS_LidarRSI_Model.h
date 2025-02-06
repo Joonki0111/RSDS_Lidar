@@ -11,7 +11,6 @@
 #include <CarMaker.h>
 #include <Car/Car.h>
 #include <Vehicle/Sensor_LidarRSI.h>
-// #include "sUDP.h"
 #include "rsds-client.h"
 
 #define LIDAR_MAX_SCANPOINT_SIZE 270000
