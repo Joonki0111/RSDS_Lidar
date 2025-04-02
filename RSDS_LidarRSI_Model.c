@@ -571,9 +571,9 @@ int RSDS_LidarRSI_WriteSensorData(tLidarRSI_SensorUnit *sens, tRSIResMsg_Lidar *
 			sens->Lidar_ScanData.Data_points[i].Ref = 0;
 		}
 		for(i = 0; i < RSIResMsg_Lidar->Header.nScanPoints; i++){
-			temp =  RSIResMsg_Lidar->SP[i].LengthOF * 1000 / 2 / VLS_128_Distance_Res; // [mm] - VLS_128_Distance_Res: 4
-			if(temp > 60000) temp = 60000;
-			sens->Lidar_ScanData.Data_points[RSIResMsg_Lidar->SP[i].BeamID].Range = (unsigned short) temp;
+			temp =  RSIResMsg_Lidar->SP[i].LengthOF * 500; //HJK
+			if(temp > 524287.0) temp = 524287.0; //HJK
+			sens->Lidar_ScanData.Data_points[RSIResMsg_Lidar->SP[i].BeamID].Range = (unsigned int) temp;
 
 			temp_c = LidarRSI_IntensityCalc_VLP(sens,  RSIResMsg_Lidar->SP[i].Intensity,  RSIResMsg_Lidar->SP[i].LengthOF);
 			sens->Lidar_ScanData.Data_points[RSIResMsg_Lidar->SP[i].BeamID].Ref = temp_c;

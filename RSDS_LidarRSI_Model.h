@@ -58,7 +58,7 @@
 
 #pragma pack(push, 1)
 typedef struct Data_point {  
-    unsigned short 	Range;	// [mm] / n, VLP-16(n = 2), VLP-128(n = 4)
+    unsigned int 	Range;	// [mm] / n, VLP-16(n = 2), VLP-128(n = 4) //HJK
     unsigned char	Ref; 	// Reflectivity [-] 0~100 diffuse, 100~255 retroreflective
 }tData_point;
 #pragma pack(pop)
