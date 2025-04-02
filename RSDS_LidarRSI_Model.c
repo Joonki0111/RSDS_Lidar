@@ -356,7 +356,7 @@ int RSDS_LidarRSI_Valid(void)
 			else 
 			{
 				Pf_LidarSens->SensorValid = 0;
-				Log("Check the OS-128 Sensor Beam file\n");
+				Log("Check the OS1-128 Sensor Beam file\n");
 			}
 		}
 		//HJK_250116 }
